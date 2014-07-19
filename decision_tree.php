@@ -81,8 +81,6 @@ function train_tree($sample, $features)
         for ($i = $limit - 1; $i >= 0; --$i) {
             $right[] = $sample[$sorted_index[$i]];
         }
-        // echo "=== $fi ===\n";
-        // echo json_encode(array_map(function ($x) use ($sample) { return $sample[$x][0]; }, $sorted_index)) . "\n";
 
         $curr = array_pop($right);
         $left[] = $curr;
@@ -106,6 +104,7 @@ function train_tree($sample, $features)
                 $best_threshold = $curr[$fi];
                 $best_left = $left;
                 $best_right = $right;
+                $best_gain = $gain;
             }
 
             $check = array_pop($right);
@@ -116,6 +115,11 @@ function train_tree($sample, $features)
             }
             $prev = $curr;
         }
+    }
+
+    if (count($best_left) == 0 || count($best_right) == 0) {
+        // TODO 説明変数が同一で分けられない
+        return new DT_TerminalNode($sample[0][5]);
     }
 
     return new DT_QueryNode(
@@ -160,14 +164,4 @@ function calc_entropy($counts)
     }
 
     return $result;
-}
-
-function build_query($fnum, $threshold, $true_child, $false_child)
-{
-    return array($fnum, $threshold, $true_child, $false_child);
-}
-
-function build_terminal($species)
-{
-    return array(-1, $species);
 }
