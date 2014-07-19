@@ -13,7 +13,6 @@ function main()
     $iris_test_set = array_slice($iris_data_set, 100, 50);
 
     $trees = rf_train($iris_training_set, 30);
-    var_dump($trees);
 
     $result = array();
     $accuracy = 0;
