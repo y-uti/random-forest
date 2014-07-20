@@ -47,111 +47,143 @@ class DT_QueryNode extends DT_Node
     }
 }
 
+class DT_BestQuery
+{
+    private static $NO_DATA = -1;
+
+    private $featureId;
+    private $threshold;
+    private $left;
+    private $right;
+    private $gain;
+
+    static function init()
+    {
+        return new DT_BestQuery(self::$NO_DATA, 0, array(), array(), 0);
+    }
+
+    function __construct($featureId, $threshold, $left, $right, $gain)
+    {
+        $this->featureId = $featureId;
+        $this->threshold = $threshold;
+        $this->left = $left;
+        $this->right = $right;
+        $this->gain = $gain;
+    }
+
+    function getFeatureId()
+    {
+        return $this->featureId;
+    }
+
+    function getThreshold()
+    {
+        return $this->threshold;
+    }
+
+    function getLeft()
+    {
+        return $this->left;
+    }
+
+    function getRight()
+    {
+        return $this->right;
+    }
+
+    function isImprovedBy($gain)
+    {
+        return $this->gain < $gain || ! $this->hasData();
+    }
+
+    function hasData()
+    {
+        return $this->featureId != self::$NO_DATA;
+    }
+}
+
 function train_tree($sample, $features)
 {
     assert('count($sample) > 0');
 
-    $species = get_uniq_species($sample);
+    $species = count_by_species($sample);
     if (count($species) == 1) {
+        // すべてのサンプルの品種が同じになっていたら終了
         return new DT_TerminalNode(array_keys($species)[0]);
     }
 
-    $best_feature = 0;
-    $best_threshold = 0;
-    $best_left = array();
-    $best_right = array();
-    $best_gain = -99999999;
-
-    foreach ($features as $fi) {
-        $d = array();
-        foreach ($sample as $s) {
-            // $d[$i] = $sample[$i][$fi]
-            $d[] = $s[$fi];
-        }
-        // それを 値の昇順に key を維持してソートする
-        asort($d);
-        // $sorted_index は $sample の index を対象説明変数の値の昇順にソートしたもの
-        $sorted_index = array_keys($d);
-
+    $best = DT_BestQuery::init();
+    foreach ($features as $f) {
         $left = array();
-        $right = array();
-        $limit = count($sorted_index);
-        for ($i = $limit - 1; $i >= 0; --$i) {
-            $right[] = $sample[$sorted_index[$i]];
-        }
+        $right = sort_sample_by_feature_desc($sample, $f);
 
-        $curr = array_pop($right);
-        $left[] = $curr;
-        $prev = $curr;
-        for ($i = 1; $i < $limit; ++$i) {
-            $curr = $sample[$sorted_index[$i]];
-
-            if ($prev[$fi] < $curr[$fi]) {
-                $gain = calc_gain($left, $right);
-                if ($gain > $best_gain) {
-                    $best_feature = $fi;
-                    $best_threshold = $curr[$fi];
-                    $best_left = $left;
-                    $best_right = $right;
-                    $best_gain = $gain;
+        $left[] = array_pop($right);
+        while ($right) {
+            $curr = end($right);
+            if (end($left)[$f] < $curr[$f]) {
+                $gain = calc_information_gain(array($left, $right));
+                if ($best->isImprovedBy($gain)) {
+                    $best = new DT_BestQuery(
+                        $f, $curr[$f], $left, $right, $gain);
                 }
             }
-
-            $check = array_pop($right);
-            $left[] = $curr;
-            if ($check[0] != $curr[0]) {
-                echo "error! " . $check[0] . " vs " . $curr[0] . "\n";
-                exit;
-            }
-            $prev = $curr;
+            $left[] = array_pop($right);
         }
     }
 
-    if (count($best_left) == 0 || count($best_right) == 0) {
+    if (!$best->hasData()) {
         // TODO 説明変数が同一で分けられない
         return new DT_TerminalNode($sample[0][5]);
     }
 
     return new DT_QueryNode(
-        $best_feature,
-        $best_threshold,
-        train_tree($best_left, $features),
-        train_tree($best_right, $features));
+        $best->getFeatureId(),
+        $best->getThreshold(),
+        train_tree($best->getLeft(), $features),
+        train_tree($best->getRight(), $features));
 }
 
-function get_uniq_species($sample)
+function sort_sample_by_feature_desc($sample, $f)
 {
-    return array_count_values(array_map(function ($x) { return $x[5]; }, $sample));
+    usort(
+        $sample,
+        function ($a, $b) use ($f) {
+            $cmp = $b[$f] - $a[$f];
+            return $cmp < 0 ? -1 : ($cmp == 0 ? 0 : 1);
+        });
+
+    return $sample;
 }
 
-function calc_gain($left, $right)
+function count_by_species($sample)
 {
-    $lcount = count($left);
-    $rcount = count($right);
-
-    $lprob = $lcount / ($lcount + $rcount);
-    $rprob = $rcount / ($lcount + $rcount);
-
-    $lspecies = get_uniq_species($left);
-    $rspecies = get_uniq_species($right);
-
-    $lentropy = calc_entropy($lspecies);
-    $rentropy = calc_entropy($rspecies);
-
-    $result = -($lprob * $lentropy + $rprob * $rentropy);
-    // echo "c=$lcount,$rcount, p=$lprob,$rprob, e=$lentropy,$rentropy, gain=$result\n";
-
-    return $result;
+    return array_count_values(array_map(
+        function ($i) { return $i[5]; }, $sample));
 }
 
-function calc_entropy($counts)
+function calc_information_gain($children)
 {
+    $total = array_sum(array_map(
+        function ($c) { return count($c); }, $children));
+
+    $result = array_sum(array_map(
+        function ($c) use ($total) {
+            return count($c) / $total * calc_entropy($c);
+        },
+        $children));
+
+    return 0 - $result;
+}
+
+function calc_entropy($sample)
+{
+    $counts = count_by_species($sample);
     $total = array_sum($counts);
-    $result = 0;
-    foreach ($counts as $c) {
-        $prob = $c / $total;
-        $result -= $prob * log($prob);
-    }
 
-    return $result;
+    return -1 * array_sum(array_map(
+        function ($c) use ($total) {
+            $prob = $c /$total;
+            return $prob * log($prob);
+        },
+        $counts));
 }
