@@ -49,11 +49,9 @@ class DT_QueryNode extends DT_Node
 
 function train_tree($sample, $features)
 {
+    assert('count($sample) > 0');
+
     $species = get_uniq_species($sample);
-    if (count($species) == 0) {
-        // Not reached (error)
-        return new DT_TerminalNode('unknown');
-    }
     if (count($species) == 1) {
         return new DT_TerminalNode(array_keys($species)[0]);
     }
@@ -87,24 +85,16 @@ function train_tree($sample, $features)
         $prev = $curr;
         for ($i = 1; $i < $limit; ++$i) {
             $curr = $sample[$sorted_index[$i]];
-            if ($prev[$fi] == $curr[$fi]) {
-                $check = array_pop($right);
-                $left[] = $curr;
-                if ($check[0] != $curr[0]) {
-                    echo "error! " . $check[0] . " vs " . $curr[0] . "\n";
-                    exit;
-                }
-                $prev = $curr;
-                continue;
-            }
 
-            $gain = calc_gain($left, $right);
-            if ($gain > $best_gain) {
-                $best_feature = $fi;
-                $best_threshold = $curr[$fi];
-                $best_left = $left;
-                $best_right = $right;
-                $best_gain = $gain;
+            if ($prev[$fi] < $curr[$fi]) {
+                $gain = calc_gain($left, $right);
+                if ($gain > $best_gain) {
+                    $best_feature = $fi;
+                    $best_threshold = $curr[$fi];
+                    $best_left = $left;
+                    $best_right = $right;
+                    $best_gain = $gain;
+                }
             }
 
             $check = array_pop($right);

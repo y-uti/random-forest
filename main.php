@@ -12,26 +12,42 @@ function main()
     $iris_training_set = array_slice($iris_data_set, 0, 100);
     $iris_test_set = array_slice($iris_data_set, 100, 50);
 
-    $trees = rf_train($iris_training_set, 30);
+    $trees = random_forest_train($iris_training_set, 30);
 
-    $result = array();
-    $accuracy = 0;
+    $truth = array_map(
+        function ($i) { return $i[5]; },
+        $iris_test_set);
 
-    foreach ($iris_test_set as $i) {
-        $species = random_forest_classify($trees, $i);
-        $k = $i[5] . ',' . $species;
-        if (!array_key_exists($k, $result)) {
-            $result[$k] = 0;
-        }
-        ++$result[$k];
-        if ($i[5] == $species) {
-            ++$accuracy;
+    $estimated = array_map(
+        function ($i) use ($trees) { return random_forest_classify($trees, $i); },
+        $iris_test_set);
+
+    $confusion_matrix = build_confusion_matrix($truth, $estimated);
+    foreach ($confusion_matrix as $key => $count) {
+        echo "$key,$count\n";
+    }
+
+    echo 'accuracy = ' . calc_accuracy($confusion_matrix) . "\n";
+}
+
+function build_confusion_matrix($truth, $estimated)
+{
+    return array_count_values(
+        array_map(
+            function ($t, $e) { return "$t,$e"; }, $truth, $estimated));
+}
+
+function calc_accuracy($confusion_matrix)
+{
+    $correct = 0;
+    foreach ($confusion_matrix as $key => $count) {
+        list ($truth, $estimated) = explode(',', $key);
+        if ($truth == $estimated) {
+            $correct += $count;
         }
     }
-    foreach ($result as $k => $c) {
-        echo "$k,$c\n";
-    }
-    echo ($accuracy * 100 / count($iris_test_set)) . "%\n";
+
+    return $correct / array_sum($confusion_matrix);
 }
 
 main();
