@@ -40,7 +40,7 @@ function sample_index($total, $samples)
     $result = range(0, $total - 1);
     shuffle($result);
 
-    return array_slice($result, $samples);
+    return array_slice($result, 0, $samples);
 }
 
 
