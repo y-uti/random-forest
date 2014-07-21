@@ -12,7 +12,7 @@ function main()
     $iris_training_set = array_slice($iris_data_set, 0, 100);
     $iris_test_set = array_slice($iris_data_set, 100, 50);
 
-    $trees = random_forest_train($iris_training_set, 30);
+    $trees = random_forest_train($iris_training_set, 30, 2);
 
     $truth = array_map(
         function ($i) { return $i[5]; },

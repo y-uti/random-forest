@@ -102,7 +102,7 @@ class DT_BestQuery
     }
 }
 
-function train_tree($sample, $features)
+function train_tree($sample, $n_features)
 {
     assert('count($sample) > 0');
 
@@ -111,6 +111,8 @@ function train_tree($sample, $features)
         // すべてのサンプルの品種が同じになっていたら終了
         return new DT_TerminalNode(array_keys($species)[0]);
     }
+
+    $features = sample_feature(4, $n_features);
 
     $best = DT_BestQuery::init();
     foreach ($features as $f) {
@@ -186,4 +188,15 @@ function calc_entropy($sample)
             return $prob * log($prob);
         },
         $counts));
+}
+
+function sample_feature($total, $samples)
+{
+    $indices = range(0, $total - 1);
+    shuffle($indices);
+    $indices = array_slice($indices, 0, $samples);
+
+    return array_map(
+        function ($i) { return $i + 1; },
+        $indices);
 }

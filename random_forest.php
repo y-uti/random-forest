@@ -2,13 +2,12 @@
 
 require_once __DIR__ . '/decision_tree.php';
 
-function random_forest_train($data, $m)
+function random_forest_train($data, $m, $n_features)
 {
     $trees = array();
     for ($i = 0; $i < $m; ++$i) {
         $sample = sample_data($data);
-        $features = sample_feature(4, 2);
-        $trees[] = train_tree($sample, $features);
+        $trees[] = train_tree($sample, $n_features);
     }
 
     return $trees;
@@ -28,17 +27,6 @@ function sample_data($data, $n = 0)
     }
 
     return $result;
-}
-
-function sample_feature($total, $samples)
-{
-    $indices = range(0, $total - 1);
-    shuffle($indices);
-    $indices = array_slice($indices, 0, $samples);
-
-    return array_map(
-        function ($i) { return $i + 1; },
-        $indices);
 }
 
 function random_forest_classify($trees, $data)
