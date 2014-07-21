@@ -141,8 +141,8 @@ function train_tree($sample, $n_features)
     return new DT_QueryNode(
         $best->getFeatureId(),
         $best->getThreshold(),
-        train_tree($best->getLeft(), $features),
-        train_tree($best->getRight(), $features));
+        train_tree($best->getLeft(), $n_features),
+        train_tree($best->getRight(), $n_features));
 }
 
 function sort_sample_by_feature_desc($sample, $f)
