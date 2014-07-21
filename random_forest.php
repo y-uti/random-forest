@@ -6,7 +6,7 @@ function random_forest_train($data, $m)
 {
     $trees = array();
     for ($i = 0; $i < $m; ++$i) {
-        $sample = sample_data($data, 50);
+        $sample = sample_data($data);
         $features = sample_feature(4, 2);
         $trees[] = train_tree($sample, $features);
     }
@@ -14,35 +14,32 @@ function random_forest_train($data, $m)
     return $trees;
 }
 
-// $data の中から $samples 個をランダムに選択する
-function sample_data($data, $samples)
+function sample_data($data, $n = 0)
 {
-    $index = sample_index(count($data), $samples);
+    $count = count($data);
 
-    return array_map(
-        function ($i) use ($data) { return $data[$i]; },
-        $index);
+    if ($n <= 0) {
+        $n = $count;
+    }
+
+    $result = array();
+    for ($i = 0; $i < $n; ++$i) {
+        $result[] = $data[mt_rand(0, $count - 1)];
+    }
+
+    return $result;
 }
 
 function sample_feature($total, $samples)
 {
-    $index = sample_index($total, $samples);
+    $indices = range(0, $total - 1);
+    shuffle($indices);
+    $indices = array_slice($indices, 0, $samples);
 
     return array_map(
         function ($i) { return $i + 1; },
-        $index);
+        $indices);
 }
-
-// $total 個の中から $samples 個のインデックスを取得する
-function sample_index($total, $samples)
-{
-    // TODO: これだと重複無しになる
-    $result = range(0, $total - 1);
-    shuffle($result);
-
-    return array_slice($result, 0, $samples);
-}
-
 
 function random_forest_classify($trees, $data)
 {
